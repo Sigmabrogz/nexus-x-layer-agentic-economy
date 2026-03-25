@@ -6,6 +6,7 @@ import config from "../../../contracts/deploy_config.json";
 
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ethereum?: any;
   }
 }
