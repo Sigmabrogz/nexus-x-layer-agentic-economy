@@ -8,5 +8,16 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sigmabrogz/nexus-x-layer-agentic-economy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Sigmabrogz/nexus-x-layer-agentic-economy/issues"
+  },
+  "homepage": "https://github.com/Sigmabrogz/nexus-x-layer-agentic-economy#readme",
+  "dependencies": {
+    "ethers": "^6.16.0"
+  }
 }

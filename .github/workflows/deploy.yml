@@ -1,28 +1,22 @@
-name: NexusX CI/CD
-
+name: Next.js CI/CD
 on:
   push:
-    branches:
-      - main
+    branches: ["main"]
   pull_request:
+    branches: ["main"]
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
+      - uses: actions/checkout@v3
+      - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
-
-      - name: Build Smart Contracts
-        run: echo "Compiling contracts with Forge/Hardhat..."
-
-      - name: Test Frontend
-        run: echo "Running UI tests..."
-
-      - name: Test Agent Logic
-        run: python3 -c "print('Agent logic tests passed.')"
+          node-version: "18.x"
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci || npm install
+      - name: Build
+        working-directory: ./frontend
+        run: npm run build
