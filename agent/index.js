@@ -1,4 +1,5 @@
 const { ethers } = require('ethers');
+const axios = require('axios');
 require('dotenv').config({ path: '../.env' });
 
 // We connect to the local Anvil / Hardhat node running on port 8545
@@ -32,10 +33,15 @@ async function main() {
             console.log(`[Agent] From: ${from}`);
             console.log(`[Agent] Endpoint requested: ${endpoint}`);
 
-            // Simulate the AI inference payload
             console.log(`[Agent] Processing inference for endpoint ${endpoint}...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            console.log(`[Agent] Inference complete! Payload returned to ${from}`);
+            try {
+                // Real API endpoint to mimic AI text generation
+                const response = await axios.get('https://dummyjson.com/quotes/random');
+                console.log(`[Agent] Inference Result: "${response.data.quote}" - ${response.data.author}`);
+                console.log(`[Agent] Payload returned to ${from}`);
+            } catch (err) {
+                console.error(`[Agent] Inference failed:`, err.message);
+            }
         }
     });
 }

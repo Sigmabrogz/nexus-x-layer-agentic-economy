@@ -14,10 +14,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^7.0.0",
+    "@nomicfoundation/hardhat-toolbox": "^6.1.2",
     "dotenv": "^17.3.1",
     "ethers": "^6.16.0",
-    "hardhat": "^3.2.0"
+    "hardhat": "^2.22.0",
+    "solc": "^0.8.20"
   },
   "type": "module"
 }

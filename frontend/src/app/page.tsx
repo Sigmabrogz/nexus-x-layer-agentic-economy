@@ -25,6 +25,8 @@ export default function Home() {
   const [balance, setBalance] = useState<string>("0");
   const [agentBalance, setAgentBalance] = useState<string>("0");
   const [loading, setLoading] = useState<boolean>(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Hardcoded for the demo agent address we generated
   const AGENT_ADDRESS = "0x85591C776EFd42FD1FEb05AC386cE3F471ec84fF";
@@ -37,25 +39,40 @@ export default function Home() {
   }, []);
 
   const connectWallet = async () => {
-    if (!provider) return alert("Please install MetaMask or another Web3 wallet.");
-    const accounts = await provider.send("eth_requestAccounts", []);
-    setUserAddress(accounts[0]);
-    updateBalances(accounts[0]);
+    setErrorMsg(null);
+    if (!provider) return setErrorMsg("Please install MetaMask or another Web3 wallet.");
+    try {
+      const accounts = await provider.send("eth_requestAccounts", []);
+      setUserAddress(accounts[0]);
+      updateBalances(accounts[0]);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setErrorMsg(e.message || "Failed to connect wallet.");
+      } else {
+        setErrorMsg("Failed to connect wallet.");
+      }
+    }
   };
 
   const updateBalances = async (address: string) => {
     if (!provider) return;
-    const contract = new ethers.Contract(ROUTER_ADDRESS, nexusRouterAbi, provider);
-    const bal = await contract.agentBalances(address);
-    const aBal = await contract.agentBalances(AGENT_ADDRESS);
-    
-    setBalance(ethers.formatEther(bal));
-    setAgentBalance(ethers.formatEther(aBal));
+    try {
+      const contract = new ethers.Contract(ROUTER_ADDRESS, nexusRouterAbi, provider);
+      const bal = await contract.agentBalances(address);
+      const aBal = await contract.agentBalances(AGENT_ADDRESS);
+      
+      setBalance(ethers.formatEther(bal));
+      setAgentBalance(ethers.formatEther(aBal));
+    } catch (e: unknown) {
+      console.error("Error fetching balances", e);
+    }
   };
 
   const registerAndDeposit = async () => {
     if (!provider || !userAddress) return;
     setLoading(true);
+    setErrorMsg(null);
+    setTxHash(null);
     try {
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(ROUTER_ADDRESS, nexusRouterAbi, signer);
@@ -67,12 +84,17 @@ export default function Home() {
       }
       
       const tx2 = await contract.deposit({ value: ethers.parseEther("0.1") });
+      setTxHash(tx2.hash);
       await tx2.wait();
       updateBalances(userAddress);
-      alert("Deposited 0.1 OKB successfully!");
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(e);
-      alert("Transaction failed");
+      if (typeof e === 'object' && e !== null) {
+        const err = e as { reason?: string; message?: string };
+        setErrorMsg(err.reason || err.message || "Transaction failed");
+      } else {
+        setErrorMsg("Transaction failed");
+      }
     }
     setLoading(false);
   };
@@ -80,17 +102,24 @@ export default function Home() {
   const payForInference = async () => {
     if (!provider || !userAddress) return;
     setLoading(true);
+    setErrorMsg(null);
+    setTxHash(null);
     try {
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(ROUTER_ADDRESS, nexusRouterAbi, signer);
       
       const tx = await contract.payForInference(AGENT_ADDRESS, ethers.parseEther("0.01"), "/v1/chat/completions");
+      setTxHash(tx.hash);
       await tx.wait();
       updateBalances(userAddress);
-      alert("Payment sent! Agent is processing your request.");
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(e);
-      alert("Payment failed");
+      if (typeof e === 'object' && e !== null) {
+        const err = e as { reason?: string; message?: string };
+        setErrorMsg(err.reason || err.message || "Payment failed");
+      } else {
+        setErrorMsg("Payment failed");
+      }
     }
     setLoading(false);
   };
@@ -103,6 +132,18 @@ export default function Home() {
       <p className="text-xl text-gray-400 mb-8 max-w-2xl text-center">
         The Nexus Payment Router allows AI agents to transact autonomously via X Layer, unlocking a new standard for decentralized API inference access.
       </p>
+
+      {errorMsg && (
+        <div className="mb-4 p-4 bg-red-900/50 border border-red-500 text-red-200 rounded-lg w-full max-w-2xl text-center">
+          {errorMsg}
+        </div>
+      )}
+
+      {txHash && (
+        <div className="mb-4 p-4 bg-green-900/50 border border-green-500 text-green-200 rounded-lg w-full max-w-2xl text-center">
+          Transaction Successful! Hash: <span className="font-mono text-xs">{txHash}</span>
+        </div>
+      )}
 
       {!userAddress ? (
         <button onClick={connectWallet} className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg shadow-lg transition-colors mb-8">
@@ -128,7 +169,8 @@ export default function Home() {
             <h2 className="text-2xl font-semibold mb-2">Fund Agent Account</h2>
             <p className="text-gray-400 mb-4">Deposit funds into the Nexus Smart Contract to prepay for AI inference.</p>
           </div>
-          <button disabled={loading || !userAddress} onClick={registerAndDeposit} className="mt-4 bg-blue-600 disabled:bg-gray-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors w-full">
+          <button disabled={loading || !userAddress} onClick={registerAndDeposit} className="mt-4 bg-blue-600 disabled:bg-gray-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors w-full flex justify-center items-center">
+            {loading ? <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></span> : null}
             Deposit 0.1 OKB
           </button>
         </div>
@@ -138,7 +180,8 @@ export default function Home() {
             <h2 className="text-2xl font-semibold mb-2">Request Inference</h2>
             <p className="text-gray-400 mb-4">Stream 0.01 OKB directly to the target AI agent and await real-time response.</p>
           </div>
-          <button disabled={loading || !userAddress} onClick={payForInference} className="mt-4 bg-purple-600 disabled:bg-gray-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded transition-colors w-full">
+          <button disabled={loading || !userAddress} onClick={payForInference} className="mt-4 bg-purple-600 disabled:bg-gray-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded transition-colors w-full flex justify-center items-center">
+            {loading ? <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></span> : null}
             Pay & Infer
           </button>
         </div>
