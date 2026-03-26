@@ -1,4 +1,4 @@
-name: Next.js CI/CD
+name: Nexus CI/CD
 on:
   push:
     branches: ["main"]
@@ -6,7 +6,22 @@ on:
     branches: ["main"]
 
 jobs:
-  build:
+  contracts-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18.x"
+      - name: Install Hardhat dependencies
+        working-directory: ./contracts
+        run: npm ci || npm install
+      - name: Run Smart Contract Tests
+        working-directory: ./contracts
+        run: npx hardhat test
+
+  frontend-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -17,6 +32,6 @@ jobs:
       - name: Install dependencies
         working-directory: ./frontend
         run: npm ci || npm install
-      - name: Build
+      - name: Build Next.js
         working-directory: ./frontend
         run: npm run build

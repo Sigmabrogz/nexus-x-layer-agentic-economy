@@ -2,10 +2,8 @@ const { ethers } = require('ethers');
 const axios = require('axios');
 require('dotenv').config({ path: '../.env' });
 
-// We connect to the local Anvil / Hardhat node running on port 8545
+// Connect to the local RPC node
 const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
-
-// We'll read the contract address from a local config file populated during deployment
 const contractConfig = require('../contracts/deploy_config.json');
 
 const nexusRouterAbi = [
@@ -18,6 +16,29 @@ const nexusRouterAbi = [
     "function agentBalances(address) external view returns (uint256)",
     "function registeredAgents(address) external view returns (bool)"
 ];
+
+async function generateAIResponse(prompt) {
+    if (process.env.OPENROUTER_API_KEY) {
+        try {
+            const res = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+                model: "google/gemma-7b-it:free",
+                messages: [{ role: "user", content: prompt }]
+            }, {
+                headers: {
+                    "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                    "Content-Type": "application/json"
+                }
+            });
+            return res.data.choices[0].message.content;
+        } catch (err) {
+            console.error("[Agent] OpenRouter API Failed:", err.message);
+        }
+    }
+    
+    // Fallback to dummy data
+    const res = await axios.get('https://dummyjson.com/quotes/random');
+    return `"${res.data.quote}" - ${res.data.author}`;
+}
 
 async function main() {
     const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
@@ -32,13 +53,12 @@ async function main() {
             console.log(`[Agent] Amount: ${ethers.formatEther(amount)} OKB`);
             console.log(`[Agent] From: ${from}`);
             console.log(`[Agent] Endpoint requested: ${endpoint}`);
+            console.log(`[Agent] Processing inference for prompt: "${endpoint}"...`);
 
-            console.log(`[Agent] Processing inference for endpoint ${endpoint}...`);
             try {
-                // Real API endpoint to mimic AI text generation
-                const response = await axios.get('https://dummyjson.com/quotes/random');
-                console.log(`[Agent] Inference Result: "${response.data.quote}" - ${response.data.author}`);
-                console.log(`[Agent] Payload returned to ${from}`);
+                const responseText = await generateAIResponse(endpoint);
+                console.log(`[Agent] Inference Result: ${responseText}`);
+                console.log(`[Agent] Payload successfully returned to ${from}`);
             } catch (err) {
                 console.error(`[Agent] Inference failed:`, err.message);
             }
