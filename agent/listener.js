@@ -25,26 +25,26 @@ async function main() {
     
     // NexusRouter ABI snippet for the event
     const abi = [
-        "event PaymentRouted(address indexed sender, address indexed agent, uint256 amount, uint256 fee)"
+        "event PaymentRouted(address indexed from, address indexed to, uint256 amount, uint256 fee, string endpoint)"
     ];
     
     // Address of the deployed NexusRouter contract
-    // We mock this for now since we don't have a live deployment
-    const contractAddress = process.env.CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000"; 
+    const contractAddress = process.env.CONTRACT_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3"; 
     
     const contract = new ethers.Contract(contractAddress, abi, provider);
 
     console.log(`Listening for PaymentRouted events on ${contractAddress}`);
 
-    contract.on("PaymentRouted", async (sender, agent, amount, fee, event) => {
+    contract.on("PaymentRouted", async (from, to, amount, fee, endpoint, event) => {
         console.log(`\n--- NEW PAYMENT ROUTED ---`);
-        console.log(`Sender: ${sender}`);
-        console.log(`Agent:  ${agent}`);
-        console.log(`Amount: ${amount.toString()}`);
-        console.log(`Fee:    ${fee.toString()}`);
+        console.log(`From:     ${from}`);
+        console.log(`To:       ${to}`);
+        console.log(`Amount:   ${amount.toString()}`);
+        console.log(`Fee:      ${fee.toString()}`);
+        console.log(`Endpoint: ${endpoint}`);
         
         // Trigger off-chain AI inference autonomously
-        const response = await triggerAIInference(agent, amount.toString());
+        const response = await triggerAIInference(to, amount.toString());
         console.log(`Inference Result: ${response.result}`);
     });
 }

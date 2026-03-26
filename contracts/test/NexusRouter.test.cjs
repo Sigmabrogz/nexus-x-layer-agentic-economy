@@ -36,12 +36,14 @@ describe("NexusRouter", function () {
         expect(await router.agentBalances(agent1.address)).to.equal(depositAmount);
 
         const paymentAmount = ethers.parseEther("0.1");
+        const expectedFee = ethers.parseEther("0.002");
+        const expectedNetAmount = ethers.parseEther("0.098");
         await expect(router.connect(agent1).payForInference(agent2.address, paymentAmount, "/v1/chat/completions"))
             .to.emit(router, "PaymentRouted")
-            .withArgs(agent1.address, agent2.address, paymentAmount, "/v1/chat/completions");
+            .withArgs(agent1.address, agent2.address, paymentAmount, expectedFee, "/v1/chat/completions");
 
         expect(await router.agentBalances(agent1.address)).to.equal(ethers.parseEther("0.9"));
-        expect(await router.agentBalances(agent2.address)).to.equal(paymentAmount);
+        expect(await router.agentBalances(agent2.address)).to.equal(expectedNetAmount);
     });
 
     it("Should route ERC20 payment correctly", async function () {
@@ -59,11 +61,13 @@ describe("NexusRouter", function () {
 
         // Pay for inference with ERC20
         const paymentAmount = ethers.parseEther("10.0");
+        const expectedFee = ethers.parseEther("0.2");
+        const expectedNetAmount = ethers.parseEther("9.8");
         await expect(router.connect(agent1).payForInferenceERC20(agent2.address, tokenAddress, paymentAmount, "/v1/generate"))
             .to.emit(router, "ERC20PaymentRouted")
-            .withArgs(agent1.address, agent2.address, tokenAddress, paymentAmount, "/v1/generate");
+            .withArgs(agent1.address, agent2.address, tokenAddress, paymentAmount, expectedFee, "/v1/generate");
 
         expect(await router.erc20Balances(agent1.address, tokenAddress)).to.equal(ethers.parseEther("90.0"));
-        expect(await router.erc20Balances(agent2.address, tokenAddress)).to.equal(paymentAmount);
+        expect(await router.erc20Balances(agent2.address, tokenAddress)).to.equal(expectedNetAmount);
     });
 });

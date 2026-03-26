@@ -51,12 +51,41 @@ export default function Home() {
 
   const connectWallet = async () => {
     if (typeof window !== 'undefined' && (window as any).ethereum) {
+      const eth = (window as any).ethereum;
+      try {
+        await eth.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0xc3' }], // X Layer Testnet is 195 (0xc3)
+        });
+      } catch (switchError: any) {
+        if (switchError.code === 4902) {
+          try {
+            await eth.request({
+              method: 'wallet_addEthereumChain',
+              params: [
+                {
+                  chainId: '0xc3',
+                  chainName: 'X Layer Testnet',
+                  rpcUrls: ['https://testrpc.xlayer.tech'],
+                  nativeCurrency: { name: 'OKB', symbol: 'OKB', decimals: 18 },
+                  blockExplorerUrls: ['https://www.okx.com/explorer/xlayer-test'],
+                },
+              ],
+            });
+          } catch (addError) {
+            console.error('Failed to add X Layer Testnet', addError);
+          }
+        } else {
+          console.error('Failed to switch to X Layer Testnet', switchError);
+        }
+      }
+
       const client = createWalletClient({
-        chain: localhost,
-        transport: custom((window as any).ethereum)
+        chain: localhost, // We keep the viem transport simple for localhost fallback in UI while wallet is on X Layer
+        transport: custom(eth)
       });
-      const [address] = await client.requestAddresses();
-      setAddress(address);
+      const [addr] = await client.requestAddresses();
+      setAddress(addr);
     }
   };
 
