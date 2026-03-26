@@ -9,11 +9,7 @@ const contractConfig = require('../deploy_config.json');
 const nexusRouterAbi = [
     "event AgentRegistered(address indexed agent)",
     "event PaymentRouted(address indexed from, address indexed to, uint256 amount, string endpoint)",
-    "event FundsDeposited(address indexed agent, uint256 amount)",
-    "function registerAgent() external",
-    "function deposit() external payable",
-    "function payForInference(address to, uint256 amount, string calldata endpoint) external",
-    "function agentBalances(address) external view returns (uint256)",
+    "event ERC20PaymentRouted(address indexed from, address indexed to, address indexed token, uint256 amount, string endpoint)",
     "function registeredAgents(address) external view returns (bool)"
 ];
 
@@ -36,51 +32,68 @@ async function generateAIResponse(prompt) {
     }
     
     // Fallback to dummy data
-    const res = await axios.get('https://dummyjson.com/quotes/random');
-    return `"${res.data.quote}" - ${res.data.author}`;
+    try {
+        const res = await axios.get('https://dummyjson.com/quotes/random');
+        return `"${res.data.quote}" - ${res.data.author}`;
+    } catch(e) {
+        return "Simulated Inference Output: " + prompt;
+    }
 }
 
 async function main() {
-    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+    // If no specific private key is given, use the first generated one or a default Hardhat one
+    const pk = process.env.PRIVATE_KEY || process.env.AGENT_0_PRIVATE_KEY || "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
+    const wallet = new ethers.Wallet(pk, provider);
     const router = new ethers.Contract(contractConfig.address, nexusRouterAbi, wallet);
 
     console.log(`[Agent] Started Nexus Agent on ${wallet.address}`);
     console.log(`[Agent] Listening to NexusRouter at ${router.target}...`);
 
-    const handleEvent = async (from, to, amount, endpoint, event) => {
-        console.log(`\n[Agent Listener] Global Event Caught - PaymentRouted: ${from} -> ${to} | Amount: ${ethers.formatEther(amount)}`);
-        if (to.toLowerCase() === wallet.address.toLowerCase()) {
-            console.log(`\n[Agent] Received Payment directed to ME!`);
-            console.log(`[Agent] Amount: ${ethers.formatEther(amount)} OKB`);
-            console.log(`[Agent] From: ${from}`);
-            console.log(`[Agent] Endpoint requested: ${endpoint}`);
-            console.log(`[Agent] Processing inference for prompt: "${endpoint}"...`);
+    const handleEvent = async (from, to, amountOrToken, endpointOrAmount, maybeEndpoint, eventPayload) => {
+        // Handle both PaymentRouted and ERC20PaymentRouted based on args length
+        let amount, endpoint, token;
+        
+        // If maybeEndpoint is defined, it's ERC20 (from, to, token, amount, endpoint)
+        if (typeof maybeEndpoint === 'string') {
+             token = amountOrToken;
+             amount = endpointOrAmount;
+             endpoint = maybeEndpoint;
+        } else {
+             // Native (from, to, amount, endpoint)
+             amount = amountOrToken;
+             endpoint = endpointOrAmount;
+             token = "Native";
+        }
 
+        console.log(`\n[Agent Listener] Global Event Caught - Payment: ${from} -> ${to} | Amount: ${ethers.formatEther(amount)}`);
+        
+        // Trigger inference even if the receiver doesn't strictly match the single pk loaded 
+        // (to simulate the network effect since we want to see it in the UI)
+        console.log(`[Agent] Processing inference for prompt: "${endpoint}"...`);
+
+        try {
+            const responseText = await generateAIResponse(endpoint);
+            console.log(`[Agent] Inference Result: ${responseText}`);
+            
+            // Post result back to Next.js API route
             try {
-                const responseText = await generateAIResponse(endpoint);
-                console.log(`[Agent] Inference Result: ${responseText}`);
-                console.log(`[Agent] Payload successfully returned to ${from}`);
-            } catch (err) {
-                console.error(`[Agent] Inference failed:`, err.message);
+                await axios.post('http://localhost:3000/api/inference', {
+                    prompt: endpoint,
+                    result: responseText,
+                    agent: to,
+                    requester: from
+                });
+                console.log(`[Agent] Result sent to frontend off-chain.`);
+            } catch (postErr) {
+                console.error(`[Agent] Frontend not reachable, but inference complete.`);
             }
+        } catch (err) {
+            console.error(`[Agent] Inference failed:`, err.message);
         }
     };
 
+    router.on("ERC20PaymentRouted", handleEvent);
     router.on("PaymentRouted", handleEvent);
-
-    // Fetch past unhandled logs for robust recovery
-    console.log("[Agent] Syncing past missed events...");
-    try {
-        const currentBlock = await provider.getBlockNumber();
-        const fromBlock = currentBlock > 100 ? currentBlock - 100 : 0;
-        const pastLogs = await router.queryFilter("PaymentRouted", fromBlock);
-        for (const log of pastLogs) {
-            console.log(`[Agent] Processing past event from block ${log.blockNumber}...`);
-            await handleEvent(log.args[0], log.args[1], log.args[2], log.args[3], log);
-        }
-    } catch (e) {
-        console.error("[Agent] Past sync failed, continuing live:", e.message);
-    }
 }
 
 main().catch(console.error);
