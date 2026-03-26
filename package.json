@@ -18,7 +18,9 @@
   },
   "homepage": "https://github.com/Sigmabrogz/nexus-x-layer-agentic-economy#readme",
   "dependencies": {
-    "ethers": "^6.16.0"
+    "dotenv": "^17.3.1",
+    "ethers": "^6.16.0",
+    "puppeteer": "^24.40.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^7.0.0",
