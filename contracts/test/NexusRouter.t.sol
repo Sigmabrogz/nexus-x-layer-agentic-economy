@@ -45,6 +45,7 @@ contract NexusRouterTest is Test {
         router.payForInference(agent2, 0.1 ether, "api.nexus.com/generate");
 
         assertEq(router.agentBalances(agent1), 0.9 ether);
-        assertEq(router.agentBalances(agent2), 0.1 ether);
+        assertEq(router.agentBalances(agent2), 0.098 ether); // 2% fee deducted
+        assertEq(router.agentBalances(address(this)), 0.002 ether); // treasury balance
     }
 }

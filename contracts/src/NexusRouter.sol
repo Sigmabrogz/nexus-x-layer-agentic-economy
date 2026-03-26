@@ -11,11 +11,18 @@ contract NexusRouter {
     mapping(address => mapping(address => uint256)) public erc20Balances; // ERC20 token balances (agent => token => amount)
     mapping(address => bool) public registeredAgents;
 
+    address public treasury;
+    uint256 public feeBasisPoints = 200; // 2% fee
+
     event AgentRegistered(address indexed agent);
-    event PaymentRouted(address indexed from, address indexed to, uint256 amount, string endpoint);
-    event ERC20PaymentRouted(address indexed from, address indexed to, address indexed token, uint256 amount, string endpoint);
+    event PaymentRouted(address indexed from, address indexed to, uint256 amount, uint256 fee, string endpoint);
+    event ERC20PaymentRouted(address indexed from, address indexed to, address indexed token, uint256 amount, uint256 fee, string endpoint);
     event FundsDeposited(address indexed agent, uint256 amount);
     event ERC20FundsDeposited(address indexed agent, address indexed token, uint256 amount);
+
+    constructor() {
+        treasury = msg.sender;
+    }
 
     function registerAgent() external {
         require(!registeredAgents[msg.sender], "Already registered");
@@ -44,10 +51,14 @@ contract NexusRouter {
         require(registeredAgents[to], "Receiver not registered");
         require(agentBalances[msg.sender] >= amount, "Insufficient balance");
 
-        agentBalances[msg.sender] -= amount;
-        agentBalances[to] += amount;
+        uint256 fee = (amount * feeBasisPoints) / 10000;
+        uint256 netAmount = amount - fee;
 
-        emit PaymentRouted(msg.sender, to, amount, endpoint);
+        agentBalances[msg.sender] -= amount;
+        agentBalances[to] += netAmount;
+        agentBalances[treasury] += fee;
+
+        emit PaymentRouted(msg.sender, to, amount, fee, endpoint);
     }
 
     // ERC20 payment
@@ -56,9 +67,13 @@ contract NexusRouter {
         require(registeredAgents[to], "Receiver not registered");
         require(erc20Balances[msg.sender][token] >= amount, "Insufficient balance");
 
-        erc20Balances[msg.sender][token] -= amount;
-        erc20Balances[to][token] += amount;
+        uint256 fee = (amount * feeBasisPoints) / 10000;
+        uint256 netAmount = amount - fee;
 
-        emit ERC20PaymentRouted(msg.sender, to, token, amount, endpoint);
+        erc20Balances[msg.sender][token] -= amount;
+        erc20Balances[to][token] += netAmount;
+        erc20Balances[treasury][token] += fee;
+
+        emit ERC20PaymentRouted(msg.sender, to, token, amount, fee, endpoint);
     }
 }
