@@ -1,0 +1,31 @@
+[dotenv@17.3.1] injecting env (6) from ../.env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[Agent] Started Nexus Agent on 0x85591C776EFd42FD1FEb05AC386cE3F471ec84fF
+[Agent] Listening to NexusRouter at 0x5FbDB2315678afecb367f032d93F642f64180aa3...
+[Agent] Syncing past missed events...
+RangeError: unsigned value cannot be negative (fault="overflow", operation="getUint", value=-94, code=NUMERIC_FAULT, version=6.16.0)
+    at makeError (/home/yatharth/sigma/hackathon-project/agent/node_modules/ethers/lib.commonjs/utils/errors.js:134:21)
+    at assert (/home/yatharth/sigma/hackathon-project/agent/node_modules/ethers/lib.commonjs/utils/errors.js:157:15)
+    at getUint (/home/yatharth/sigma/hackathon-project/agent/node_modules/ethers/lib.commonjs/utils/maths.js:105:28)
+    at toBeArray (/home/yatharth/sigma/hackathon-project/agent/node_modules/ethers/lib.commonjs/utils/maths.js:199:19)
+    at toQuantity (/home/yatharth/sigma/hackathon-project/agent/node_modules/ethers/lib.commonjs/utils/maths.js:235:85)
+    at /home/yatharth/sigma/hackathon-project/agent/node_modules/ethers/lib.commonjs/providers/abstract-provider.js:433:80
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 1)
+    at async JsonRpcProvider.getLogs (/home/yatharth/sigma/hackathon-project/agent/node_modules/ethers/lib.commonjs/providers/abstract-provider.js:828:22)
+    at async Proxy.queryFilter (/home/yatharth/sigma/hackathon-project/agent/node_modules/ethers/lib.commonjs/contract/contract.js:788:17) {
+  code: 'NUMERIC_FAULT',
+  fault: 'overflow',
+  operation: 'getUint',
+  value: -94,
+  shortMessage: 'unsigned value cannot be negative'
+}
+
+[Agent Listener] Global Event Caught - PaymentRouted: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 -> 0x85591C776EFd42FD1FEb05AC386cE3F471ec84fF | Amount: 0.05
+
+[Agent] Received Payment directed to ME!
+[Agent] Amount: 0.05 OKB
+[Agent] From: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+[Agent] Endpoint requested: /v1/chat/completions
+[Agent] Processing inference for prompt: "/v1/chat/completions"...
+[Agent] Inference Result: "Champions are not generated from the championship. Champion is generated from something they have in them, desires, dreams, and visions." - Muhammad Ali
+[Agent] Payload successfully returned to 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266

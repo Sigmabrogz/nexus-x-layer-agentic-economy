@@ -2,7 +2,7 @@ const { ethers } = require('ethers');
 require('dotenv').config({ path: '../.env' });
 
 const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
-const contractConfig = require('../contracts/deploy_config.json');
+const contractConfig = require('../deploy_config.json');
 
 const nexusRouterAbi = [
     "function registerAgent() external",

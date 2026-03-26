@@ -4,7 +4,7 @@ require('dotenv').config({ path: '../.env' });
 
 // Connect to the local RPC node
 const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
-const contractConfig = require('../contracts/deploy_config.json');
+const contractConfig = require('../deploy_config.json');
 
 const nexusRouterAbi = [
     "event AgentRegistered(address indexed agent)",
@@ -47,9 +47,10 @@ async function main() {
     console.log(`[Agent] Started Nexus Agent on ${wallet.address}`);
     console.log(`[Agent] Listening to NexusRouter at ${router.target}...`);
 
-    router.on("PaymentRouted", async (from, to, amount, endpoint, event) => {
+    const handleEvent = async (from, to, amount, endpoint, event) => {
+        console.log(`\n[Agent Listener] Global Event Caught - PaymentRouted: ${from} -> ${to} | Amount: ${ethers.formatEther(amount)}`);
         if (to.toLowerCase() === wallet.address.toLowerCase()) {
-            console.log(`\n[Agent] Received Payment!`);
+            console.log(`\n[Agent] Received Payment directed to ME!`);
             console.log(`[Agent] Amount: ${ethers.formatEther(amount)} OKB`);
             console.log(`[Agent] From: ${from}`);
             console.log(`[Agent] Endpoint requested: ${endpoint}`);
@@ -63,7 +64,23 @@ async function main() {
                 console.error(`[Agent] Inference failed:`, err.message);
             }
         }
-    });
+    };
+
+    router.on("PaymentRouted", handleEvent);
+
+    // Fetch past unhandled logs for robust recovery
+    console.log("[Agent] Syncing past missed events...");
+    try {
+        const currentBlock = await provider.getBlockNumber();
+        const fromBlock = currentBlock > 100 ? currentBlock - 100 : 0;
+        const pastLogs = await router.queryFilter("PaymentRouted", fromBlock);
+        for (const log of pastLogs) {
+            console.log(`[Agent] Processing past event from block ${log.blockNumber}...`);
+            await handleEvent(log.args[0], log.args[1], log.args[2], log.args[3], log);
+        }
+    } catch (e) {
+        console.error("[Agent] Past sync failed, continuing live:", e.message);
+    }
 }
 
 main().catch(console.error);

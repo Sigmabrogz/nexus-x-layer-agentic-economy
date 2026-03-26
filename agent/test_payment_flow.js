@@ -1,7 +1,7 @@
-import { ethers } from "ethers";
-import fs from "fs";
-import path from "path";
-import dotenv from "dotenv";
+const { ethers } = require("ethers");
+const fs = require("fs");
+const path = require("path");
+const dotenv = require("dotenv");
 
 dotenv.config({ path: path.join(process.cwd(), '../.env') });
 
