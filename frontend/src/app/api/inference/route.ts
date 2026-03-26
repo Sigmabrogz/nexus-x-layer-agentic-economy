@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-// In-memory store for hackathon purposes (clears on restart)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let inferences: any[] = [];
 
 export async function GET() {
@@ -14,9 +14,9 @@ export async function POST(req: Request) {
             ...data,
             time: new Date().toISOString()
         });
-        // Keep only last 20
         inferences = inferences.slice(0, 20);
         return NextResponse.json({ success: true });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
         return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }

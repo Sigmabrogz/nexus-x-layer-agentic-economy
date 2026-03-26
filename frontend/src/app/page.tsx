@@ -1,22 +1,16 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { createPublicClient, http, parseAbiItem, formatEther, createWalletClient, custom } from 'viem';
 import { localhost } from 'viem/chains';
 
 const NEXUS_ROUTER_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
-const ABI = [
-  parseAbiItem('function registerAgent() external'),
-  parseAbiItem('function agentBalances(address) view returns (uint256)'),
-  parseAbiItem('event PaymentRouted(address indexed from, address indexed to, uint256 amount, uint256 fee, string endpoint)'),
-  parseAbiItem('event ERC20PaymentRouted(address indexed from, address indexed to, address indexed token, uint256 amount, uint256 fee, string endpoint)'),
-  parseAbiItem('event AgentRegistered(address indexed agent)')
-];
-
 export default function Home() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [events, setEvents] = useState<any[]>([]);
-  const [treasuryRevenue, setTreasuryRevenue] = useState(0n);
+  const [treasuryRevenue, setTreasuryRevenue] = useState(BigInt(0));
   const [address, setAddress] = useState<string>('');
 
   useEffect(() => {
@@ -49,14 +43,27 @@ export default function Home() {
     return () => unwatch();
   }, []);
 
+  const endpointStats = useMemo(() => {
+    const stats: Record<string, number> = {};
+    events.forEach(evt => {
+      if (evt.endpoint) {
+        stats[evt.endpoint] = (stats[evt.endpoint] || 0) + 1;
+      }
+    });
+    return Object.entries(stats).sort((a, b) => b[1] - a[1]);
+  }, [events]);
+
   const connectWallet = async () => {
     if (typeof window !== 'undefined' && (window as any).ethereum) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const eth = (window as any).ethereum;
       try {
         await eth.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: '0xc3' }], // X Layer Testnet is 195 (0xc3)
         });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (switchError: any) {
         if (switchError.code === 4902) {
           try {
@@ -81,7 +88,7 @@ export default function Home() {
       }
 
       const client = createWalletClient({
-        chain: localhost, // We keep the viem transport simple for localhost fallback in UI while wallet is on X Layer
+        chain: localhost, 
         transport: custom(eth)
       });
       const [addr] = await client.requestAddresses();
@@ -103,21 +110,36 @@ export default function Home() {
         </button>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 shadow-xl">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 shadow-xl col-span-1">
           <h2 className="text-neutral-400 text-sm font-medium mb-2">Protocol Treasury Revenue</h2>
           <p className="text-4xl font-bold text-emerald-400">{formatEther(treasuryRevenue)} <span className="text-lg">XLR</span></p>
           <p className="text-xs text-neutral-500 mt-2">2% fee on all agentic micro-transactions</p>
         </div>
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 shadow-xl">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 shadow-xl col-span-1">
           <h2 className="text-neutral-400 text-sm font-medium mb-2">Live Agents Active</h2>
           <p className="text-4xl font-bold text-blue-400">42</p>
           <p className="text-xs text-neutral-500 mt-2">Agents connected via X402</p>
         </div>
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 shadow-xl">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 shadow-xl col-span-1">
           <h2 className="text-neutral-400 text-sm font-medium mb-2">Total Inferences</h2>
           <p className="text-4xl font-bold text-purple-400">{events.length}</p>
           <p className="text-xs text-neutral-500 mt-2">Inferences routed through Nexus</p>
+        </div>
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 shadow-xl col-span-1 max-h-48 overflow-y-auto">
+          <h2 className="text-neutral-400 text-sm font-medium mb-2">Endpoint Usage</h2>
+          {endpointStats.length === 0 ? (
+            <p className="text-xs text-neutral-500 mt-2">No data yet</p>
+          ) : (
+            <ul className="space-y-2 mt-4">
+              {endpointStats.map(([endpoint, count]) => (
+                <li key={endpoint} className="flex justify-between items-center text-sm">
+                  <span className="text-blue-300 truncate max-w-[120px]" title={endpoint}>{endpoint}</span>
+                  <span className="bg-neutral-800 px-2 py-1 rounded-full text-xs font-bold">{count}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
