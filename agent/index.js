@@ -8,8 +8,8 @@ const contractConfig = require('../deploy_config.json');
 
 const nexusRouterAbi = [
     "event AgentRegistered(address indexed agent)",
-    "event PaymentRouted(address indexed from, address indexed to, uint256 amount, string endpoint)",
-    "event ERC20PaymentRouted(address indexed from, address indexed to, address indexed token, uint256 amount, string endpoint)",
+    "event PaymentRouted(address indexed from, address indexed to, uint256 amount, uint256 fee, string endpoint)",
+    "event ERC20PaymentRouted(address indexed from, address indexed to, address indexed token, uint256 amount, uint256 fee, string endpoint)",
     "function registeredAgents(address) external view returns (bool)"
 ];
 
@@ -49,23 +49,23 @@ async function main() {
     console.log(`[Agent] Started Nexus Agent on ${wallet.address}`);
     console.log(`[Agent] Listening to NexusRouter at ${router.target}...`);
 
-    const handleEvent = async (from, to, amountOrToken, endpointOrAmount, maybeEndpoint, eventPayload) => {
+    const handleEvent = async (...args) => {
         // Handle both PaymentRouted and ERC20PaymentRouted based on args length
-        let amount, endpoint, token;
+        let from, to, amount, fee, endpoint, token, eventPayload;
         
-        // If maybeEndpoint is defined, it's ERC20 (from, to, token, amount, endpoint)
-        if (typeof maybeEndpoint === 'string') {
-             token = amountOrToken;
-             amount = endpointOrAmount;
-             endpoint = maybeEndpoint;
-        } else {
-             // Native (from, to, amount, endpoint)
-             amount = amountOrToken;
-             endpoint = endpointOrAmount;
+        if (args.length === 7) {
+             // ERC20 (from, to, token, amount, fee, endpoint, eventPayload)
+             [from, to, token, amount, fee, endpoint, eventPayload] = args;
+        } else if (args.length === 6) {
+             // Native (from, to, amount, fee, endpoint, eventPayload)
+             [from, to, amount, fee, endpoint, eventPayload] = args;
              token = "Native";
+        } else {
+             console.log("Unknown event signature");
+             return;
         }
 
-        console.log(`\n[Agent Listener] Global Event Caught - Payment: ${from} -> ${to} | Amount: ${ethers.formatEther(amount)}`);
+        console.log(`\n[Agent Listener] Global Event Caught - Payment: ${from} -> ${to} | Token: ${token} | Amount: ${ethers.formatEther(amount)} | Fee: ${ethers.formatEther(fee)}`);
         
         // Trigger inference even if the receiver doesn't strictly match the single pk loaded 
         // (to simulate the network effect since we want to see it in the UI)
